@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "conversationKey": "3:5",
+    "senderId": 3,
+    "receiverId": 5,
+    "content": "hello",
+    "createdAt": "2026-03-20T07:23:39.061Z"
+  },
+  {
+    "id": 2,
+    "conversationKey": "3:5",
+    "senderId": 5,
+    "receiverId": 3,
+    "content": "he",
+    "createdAt": "2026-03-20T07:25:30.384Z"
+  }
+]
