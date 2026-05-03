@@ -6,7 +6,8 @@ export const categories = [
   "Giáo dục",
   "Sức khỏe",
   "Môi trường",
-  "Du lịch"
+  "Du lịch",
+  "Quốc tế"
 ];
 
 const baseArticles = [
@@ -74,6 +75,71 @@ const baseArticles = [
     publishedAt: "2026-03-05T16:30:00.000Z",
     image:
       "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    id: 6,
+    title: "Ông Donald Trump công bố kế hoạch cải cách thương mại Mỹ",
+    category: "Quốc tế",
+    summary:
+      "Cựu Tổng thống Mỹ Donald Trump công bố chiến lược thương mại mới nhằm tăng cường bảo vệ các ngành công nghiệp nước nhà.",
+    author: "John Smith",
+    source: "Reuters",
+    location: "Washington DC",
+    publishedAt: "2026-04-30T15:45:00.000Z",
+    image:
+      "https://images.unsplash.com/photo-1551075540-9d0a3cc4fca0?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    id: 7,
+    title: "Cuộc bầu cử Mỹ 2026: Trump chiếm ưu thế trong các cuộc thăm dò",
+    category: "Quốc tế",
+    summary:
+      "Các cuộc thăm dò ý kiến gần đây cho thấy Donald Trump dẫn trước các ứng cử viên đối thủ trước thềm bầu cử năm nay.",
+    author: "Sarah Johnson",
+    source: "Associated Press",
+    location: "New York",
+    publishedAt: "2026-04-30T14:20:00.000Z",
+    image:
+      "https://images.unsplash.com/photo-1552058544-f6b08422138a?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    id: 8,
+    title: "Mỹ tăng cung cấp vũ khí cho đồng minh châu Âu giữa căng thẳng địa chính trị",
+    category: "Quốc tế",
+    summary:
+      "Chính phủ Mỹ công bố gói hỗ trợ quân sự trị giá 5 tỷ đô la cho các nước đồng minh NATO.",
+    author: "Michael Brown",
+    source: "CNN International",
+    location: "Pentagon",
+    publishedAt: "2026-04-30T13:00:00.000Z",
+    image:
+      "https://images.unsplash.com/photo-1518611505868-48510c2e6789?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    id: 9,
+    title: "Nền kinh tế Mỹ tăng trưởng 2.8% trong quý I năm 2026",
+    category: "Quốc tế",
+    summary:
+      "Sở Phân tích Kinh tế Mỹ công bố mức tăng trưởng GDP vượt kỳ vọng, hỗ trợ xu hướng tăng cơ hội việc làm.",
+    author: "Emily Davis",
+    source: "U.S. Bureau of Economic Analysis",
+    location: "Washington DC",
+    publishedAt: "2026-04-30T11:30:00.000Z",
+    image:
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    id: 10,
+    title: "Donald Trump kêu gọi cải tổ hệ thống y tế Mỹ",
+    category: "Quốc tế",
+    summary:
+      "Trong bài phát biểu tại Florida, ông Trump đề xuất một loạt cải tổ nhằm giảm chi phí chăm sóc sức khỏe.",
+    author: "Robert Wilson",
+    source: "The New York Times",
+    location: "Mar-a-Lago",
+    publishedAt: "2026-04-29T16:15:00.000Z",
+    image:
+      "https://images.unsplash.com/photo-1576091160550-112173f31c77?auto=format&fit=crop&w=1200&q=80"
   }
 ];
 
@@ -154,7 +220,8 @@ const categoryTags = {
   "Giáo dục": ["Kỹ năng số", "Đại học", "EdTech", "Học liệu", "Nghiên cứu"],
   "Sức khỏe": ["Y tế số", "Phòng bệnh", "Dinh dưỡng", "Tâm lý", "Điều trị"],
   "Môi trường": ["Phát thải", "Năng lượng sạch", "Tái chế", "Đa dạng sinh học", "ESG"],
-  "Du lịch": ["Điểm đến", "Lữ hành", "Khách quốc tế", "Lưu trú", "Văn hóa địa phương"]
+  "Du lịch": ["Điểm đến", "Lữ hành", "Khách quốc tế", "Lưu trú", "Văn hóa địa phương"],
+  "Quốc tế": ["Chính trị", "Thương mại", "Ngoại giao", "Trump", "Kinh tế thế giới"]
 };
 
 const imagePool = [

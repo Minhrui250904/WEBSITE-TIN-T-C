@@ -2,6 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import './SpinWheel.css';
 
+// Component để hiển thị số tung ngẫu nhiên
+const DiceAnimatingNumber = () => {
+  const [displayNumber, setDisplayNumber] = useState(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDisplayNumber(Math.floor(Math.random() * 4) + 1);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  return <span>{displayNumber}</span>;
+};
+
 
 // Hàm lấy userId/email hiện tại từ authUser prop
 function getCurrentUserKey(authUser) {
@@ -11,16 +25,19 @@ function getCurrentUserKey(authUser) {
 
 const SpinWheel = ({ authUser, onSpinRequest }) => {
   const [isSpinning, setIsSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
+  const [diceShake, setDiceShake] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hasSpun, setHasSpun] = useState(false);
+  const [resultDice, setResultDice] = useState(null);
+  const [prizeMessage, setPrizeMessage] = useState('');
+  const [showResult, setShowResult] = useState(false);
   // Không cần state cho thời gian chờ nữa
 
   const prizes = [
-    'Giảm giá nửa giá VIP cho tất cả các gói',
-    'Free VIP Bạc',
-    'Chúc bạn may mắn lần sau',
-    'Giảm giá 5%'
+    { label: 'Giảm giá 50%', icon: '💰', color: '#ff6b6b' },
+    { label: 'Tiền thưởng', icon: '💵', color: '#4ecdc4' },
+    { label: 'Quay lại sau', icon: '🍀', color: '#ffd93d' },
+    { label: 'Giảm giá 10%', icon: '🎁', color: '#a8e6cf' }
   ];
 
   const prizeCodeToIndex = {
@@ -34,22 +51,30 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
     setHasSpun(Boolean(authUser?.spinWheel?.used));
   }, [authUser]);
 
+  useEffect(() => {
+    // Khi modal mở, nếu đã tung rồi thì hiển thị kết quả
+    if (isModalOpen && hasSpun && resultDice) {
+      setShowResult(true);
+    }
+  }, [isModalOpen]);
+
 
 
   const spin = async () => {
     if (isSpinning || hasSpun) return;
     if (!authUser) {
-      alert('Vui lòng đăng nhập để quay thưởng.');
+      alert('Vui lòng đăng nhập để tung xúc sắc.');
       return;
     }
 
-    let prize = 'Chúc bạn may mắn lần sau';
+    let prize = prizes[2].label; // Mặc định là "Quay lại sau"
     let rewardMessage = '';
     let targetIndex = Math.floor(Math.random() * prizes.length);
 
     setIsSpinning(true);
-    // Tạo phản hồi thị giác ngay khi nhấn nút quay
-    setRotation((prev) => prev + 720);
+    setDiceShake(true);
+    // Tạo phản hồi thị giác ngay khi nhấn nút tung
+    setResultDice(null);
 
     try {
       if (onSpinRequest) {
@@ -69,22 +94,16 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
       return;
     }
 
-    const sectionAngle = 360 / prizes.length;
-    const targetCenterAngle = targetIndex * sectionAngle + sectionAngle / 2;
-    const landingAngle = 360 - targetCenterAngle;
-    setRotation((prev) => {
-      const base = prev + 1440;
-      const normalizedBase = ((base % 360) + 360) % 360;
-      const adjust = (landingAngle - normalizedBase + 360) % 360;
-      return base + adjust;
-    });
+    setTimeout(() => {
+      setDiceShake(false);
+      setResultDice(targetIndex + 1);
+    }, 2500);
 
     setTimeout(() => {
       setIsSpinning(false);
-
       setHasSpun(true);
-
-      alert(`Chúc mừng! Bạn nhận được: ${prize}${rewardMessage ? `\n\n${rewardMessage}` : ''}\n\nBạn đã hết lượt quay.`);
+      setPrizeMessage(`Chúc mừng! Bạn nhận được: ${prize}${rewardMessage ? `\n${rewardMessage}` : ''}\n\nBạn đã hết lượt tung.`);
+      setShowResult(true);
     }, 3000);
   };
 
@@ -94,6 +113,11 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    // Reset result states khi đóng modal nhưng giữ hasSpun
+    setResultDice(null);
+    setDiceShake(false);
+    setPrizeMessage('');
+    setShowResult(false);
   };
 
   return (
@@ -102,18 +126,13 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
       <div className="spin-wheel-icon" onClick={openModal}>
         <div className={`spin-wheel-mini ${hasSpun ? 'used' : ''}`}>
           <div className="spin-wheel-mini-sections">
-            {prizes.slice(0, 4).map((_, index) => (
+            {prizes.map((prize, index) => (
               <div
                 key={index}
                 className="spin-wheel-mini-section"
                 style={{
                   transform: `rotate(${index * 90}deg)`,
-                  backgroundColor: hasSpun ? '#ccc' : [
-                    '#ff6b6b', // đỏ cho giảm giá VIP
-                    '#4ecdc4', // xanh cho Free VIP
-                    '#ffd93d', // vàng cho chúc may mắn
-                    '#a8e6cf'  // xanh nhạt cho giảm giá 5%
-                  ][index]
+                  backgroundColor: hasSpun ? '#ccc' : prize.color
                 }}
               />
             ))}
@@ -121,7 +140,7 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
           <div className="spin-wheel-mini-center">{hasSpun ? '✅' : '🎰'}</div>
         </div>
         <div className="spin-wheel-tooltip">
-          {hasSpun ? 'Hết lượt quay' : 'Quay thưởng'}
+          {hasSpun ? 'Hết lượt tung' : 'Tung xúc sắc'}
         </div>
       </div>
 
@@ -130,42 +149,44 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
         <div className="spin-modal-backdrop" onClick={closeModal}>
           <div className="spin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="spin-modal-header">
-              <h2>Vòng Quay May Mắn</h2>
+              <h2>Tung Xúc Sắc</h2>
               <button className="spin-modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="spin-modal-body">
               {hasSpun ? (
-                <div className="spin-used-message">
-                  <div className="spin-used-icon">🎉</div>
-                  <h3>Hết lượt quay</h3>
-                  <p>Bạn chỉ được quay 1 lần duy nhất.</p>
+                <div className="spin-result-message">
+                  <div className="result-celebration">🎉</div>
+                  <h3>Kết quả tung xúc sắc</h3>
+                  <div className="dice-result-display">
+                    <div className="result-number">{resultDice}</div>
+                    <div className="result-icon">{prizes[resultDice - 1]?.icon}</div>
+                    <div className="result-label">{prizes[resultDice - 1]?.label}</div>
+                  </div>
+                  <p className="prize-detail">{prizeMessage}</p>
+                  <button className="close-result-btn" onClick={closeModal}>Đóng</button>
                 </div>
               ) : (
                 <>
-                  <div className="spin-wheel-large" style={{ transform: `rotate(${rotation}deg)` }}>
-                    {prizes.map((prize, index) => (
-                      <div
-                        key={index}
-                        className="spin-wheel-large-section"
-                        style={{
-                          transform: `rotate(${index * 90}deg)`,
-                          backgroundColor: [
-                            '#ff6b6b', // đỏ cho giảm giá VIP
-                            '#4ecdc4', // xanh cho Free VIP
-                            '#ffd93d', // vàng cho chúc may mắn
-                            '#a8e6cf'  // xanh nhạt cho giảm giá 5%
-                          ][index]
-                        }}
-                      >
-                        <span className="prize-text-large">{prize}</span>
-                      </div>
-                    ))}
+                  <div className={`dice-container ${diceShake ? 'shaking' : ''}`} onClick={(e) => e.stopPropagation()}>
+                    <div className="dice">
+                      {resultDice ? (
+                        <div className="dice-result">
+                          <div className="result-number">{resultDice}</div>
+                          <div className="result-label">{prizes[resultDice - 1]?.label}</div>
+                          <div className="result-icon">{prizes[resultDice - 1]?.icon}</div>
+                        </div>
+                      ) : diceShake ? (
+                        <div className="dice-rolling"><DiceAnimatingNumber /></div>
+                      ) : (
+                        <div className="dice-rolling">🎲</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="spin-pointer-large">▼</div>
-                  <button className="spin-button-large" onClick={spin} disabled={isSpinning}>
-                    {isSpinning ? 'Đang quay...' : 'Quay ngay!'}
+                  <div className="spin-pointer-large">🎲</div>
+                  <button className="spin-button-large" onClick={(e) => { e.stopPropagation(); spin(); }} disabled={isSpinning}>
+                    {isSpinning ? 'Đang tung...' : 'Tung ngay!'}
                   </button>
-                  <p className="spin-instruction">Nhấn nút để quay bánh xe may mắn!</p>
+                  <p className="spin-instruction">Nhấn nút để tung xúc sắc may mắn!</p>
                 </>
               )}
             </div>
