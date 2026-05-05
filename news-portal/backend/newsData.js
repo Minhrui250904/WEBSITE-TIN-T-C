@@ -85,9 +85,9 @@ const baseArticles = [
     author: "John Smith",
     source: "Reuters",
     location: "Washington DC",
-    publishedAt: "2026-04-30T15:45:00.000Z",
+    publishedAt: "2026-04-30T10:00:00.000Z",
     image:
-      "https://images.unsplash.com/photo-1551075540-9d0a3cc4fca0?auto=format&fit=crop&w=1200&q=80"
+      "https://images.unsplash.com/photo-1483389127117-b6a2102724ae?auto=format&fit=crop&w=1200&q=80"
   },
   {
     id: 7,
@@ -98,9 +98,9 @@ const baseArticles = [
     author: "Sarah Johnson",
     source: "Associated Press",
     location: "New York",
-    publishedAt: "2026-04-30T14:20:00.000Z",
+    publishedAt: "2026-04-29T14:30:00.000Z",
     image:
-      "https://images.unsplash.com/photo-1552058544-f6b08422138a?auto=format&fit=crop&w=1200&q=80"
+      "https://images.unsplash.com/photo-1517457373614-b7152f800fd1?auto=format&fit=crop&w=1200&q=80"
   },
   {
     id: 8,
@@ -111,9 +111,9 @@ const baseArticles = [
     author: "Michael Brown",
     source: "CNN International",
     location: "Pentagon",
-    publishedAt: "2026-04-30T13:00:00.000Z",
+    publishedAt: "2026-04-28T09:15:00.000Z",
     image:
-      "https://images.unsplash.com/photo-1518611505868-48510c2e6789?auto=format&fit=crop&w=1200&q=80"
+      "https://images.unsplash.com/photo-1512453475868-bada826e63c6?auto=format&fit=crop&w=1200&q=80"
   },
   {
     id: 9,
@@ -124,9 +124,9 @@ const baseArticles = [
     author: "Emily Davis",
     source: "U.S. Bureau of Economic Analysis",
     location: "Washington DC",
-    publishedAt: "2026-04-30T11:30:00.000Z",
+    publishedAt: "2026-04-27T11:45:00.000Z",
     image:
-      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80"
+      "https://images.unsplash.com/photo-1611974588521-c054a8042cf0?auto=format&fit=crop&w=1200&q=80"
   },
   {
     id: 10,
@@ -137,9 +137,9 @@ const baseArticles = [
     author: "Robert Wilson",
     source: "The New York Times",
     location: "Mar-a-Lago",
-    publishedAt: "2026-04-29T16:15:00.000Z",
+    publishedAt: "2026-04-26T16:20:00.000Z",
     image:
-      "https://images.unsplash.com/photo-1576091160550-112173f31c77?auto=format&fit=crop&w=1200&q=80"
+      "https://images.unsplash.com/photo-1576091160671-112d4fbbc9db?auto=format&fit=crop&w=1200&q=80"
   }
 ];
 
@@ -238,7 +238,7 @@ const imagePool = [
 ];
 
 const generatedArticles = Array.from({ length: 45 }, (_, idx) => {
-  const id = idx + 6;
+  const id = idx + 21;
   const category = categories[idx % categories.length];
   const title = `${category}: ${titleFragments[idx % titleFragments.length]} ${id}`;
   const summary = summaryFragments[idx % summaryFragments.length];
@@ -314,14 +314,14 @@ function buildLongContent(article, idx) {
   ].join("\n\n");
 }
 
-const generatedArticlesCount = 95;
+const generatedArticlesCount = 105;
 
 const fullGeneratedArticles = Array.from({ length: generatedArticlesCount }, (_, idx) => {
   if (idx < generatedArticles.length) {
     return generatedArticles[idx];
   }
 
-  const id = idx + 6;
+  const id = idx + 21;
   const category = categories[idx % categories.length];
 
   return {

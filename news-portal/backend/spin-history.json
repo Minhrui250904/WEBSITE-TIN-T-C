@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "userId": 7,
+    "userName": "Van Phu Nhat Minh",
+    "userEmail": "quantinh31@gmail.com",
+    "prizeCode": "vip_discount_5",
+    "prizeLabel": "Giảm giá 5%",
+    "hasDiscount": true,
+    "discountPercent": 5,
+    "spunAt": "2026-05-04T15:13:06.007Z"
+  },
+  {
+    "id": 2,
+    "userId": 1,
+    "userName": "Admin",
+    "userEmail": "admin@gmail.com",
+    "prizeCode": "vip_discount_5",
+    "prizeLabel": "Giảm giá 5%",
+    "hasDiscount": true,
+    "discountPercent": 5,
+    "spunAt": "2026-05-04T16:19:18.767Z"
+  },
+  {
+    "id": 3,
+    "userId": 8,
+    "userName": "Van Phu Nhat Minh AA",
+    "userEmail": "quantinh31111@gmail.com",
+    "prizeCode": "vip_discount_5",
+    "prizeLabel": "Giảm giá 5%",
+    "hasDiscount": true,
+    "discountPercent": 5,
+    "spunAt": "2026-05-05T03:35:08.169Z"
+  },
+  {
+    "id": 4,
+    "userId": 9,
+    "userName": "trumwebnaynha",
+    "userEmail": "admin11@gmail.com",
+    "prizeCode": "lucky_next_time",
+    "prizeLabel": "Chúc bạn may mắn lần sau",
+    "hasDiscount": false,
+    "discountPercent": 0,
+    "spunAt": "2026-05-05T09:52:10.675Z"
+  }
+]

@@ -15,6 +15,140 @@ const AVATAR_DATA_URL_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,[a-zA-Z0-9+
 const MAX_AVATAR_FILE_SIZE = 2 * 1024 * 1024;
 const MAX_AVATAR_LENGTH = 3 * 1024 * 1024;
 const REGISTER_ROLES = new Set(["user", "editor"]);
+const PERMISSION_ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "editor", label: "Biên tập viên" },
+  { value: "moderator", label: "Điều hành viên" },
+  { value: "user", label: "Người dùng" }
+];
+
+const PERMISSION_ROLE_LABELS = {
+  admin: "Admin",
+  editor: "Editor",
+  moderator: "Moderator",
+  user: "User"
+};
+
+const PERMISSION_LABELS = {
+  "read:articles": "Xem bài viết",
+  "read:comments": "Xem bình luận",
+  "create:comments": "Viết bình luận",
+  "read:profile": "Xem hồ sơ",
+  "update:profile": "Chỉnh sửa hồ sơ",
+  "read:friends": "Xem bạn bè",
+  "manage:friends": "Quản lý bạn bè",
+  "read:chat": "Xem chat",
+  "create:chat": "Gửi tin nhắn",
+  "spin:spinwheel": "Quay vòng quay may mắn",
+  "read:prizes": "Xem phần thưởng",
+  "create:vip-request": "Gửi yêu cầu VIP",
+  "read:payment-history": "Xem lịch sử thanh toán",
+  "create:articles": "Tạo bài viết",
+  "update:own-articles": "Chỉnh sửa bài viết của mình",
+  "delete:own-articles": "Xóa bài viết của mình",
+  "read:all-articles": "Xem tất cả bài viết",
+  "moderate:articles": "Duyệt bài viết",
+  "read:users": "Xem người dùng",
+  "read:vip-requests": "Xem yêu cầu VIP",
+  "manage:users": "Quản lý người dùng",
+  "manage:roles": "Quản lý quyền",
+  "manage:prizes": "Quản lý phần thưởng",
+  "manage:spinwheel": "Quản lý vòng quay",
+  "manage:categories": "Quản lý danh mục",
+  "approve:vip-requests": "Duyệt VIP",
+  "read:invoices": "Xem hóa đơn",
+  "read:spin-history": "Xem lịch sử quay",
+  "reset:spins": "Reset lượt quay"
+};
+
+const ROLE_PERMISSIONS = {
+  user: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history"
+  ],
+  editor: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",
+    "update:own-articles",
+    "delete:own-articles"
+  ],
+  moderator: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",
+    "update:own-articles",
+    "delete:own-articles",
+    "read:all-articles",
+    "moderate:articles",
+    "read:users",
+    "read:vip-requests"
+  ],
+  admin: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",
+    "update:own-articles",
+    "delete:own-articles",
+    "read:all-articles",
+    "moderate:articles",
+    "read:users",
+    "read:vip-requests",
+    "manage:users",
+    "manage:roles",
+    "manage:prizes",
+    "manage:spinwheel",
+    "manage:categories",
+    "approve:vip-requests",
+    "read:invoices",
+    "read:spin-history",
+    "reset:spins"
+  ]
+};
 
 const MENU_PAGES = {
   "Trang chủ": {
@@ -545,6 +679,11 @@ function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminTab, setAdminTab] = useState("users");
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminCategories, setAdminCategories] = useState([]);
+  const [adminCategoryMode, setAdminCategoryMode] = useState("list");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [editedCategoryName, setEditedCategoryName] = useState("");
   const [adminVipRequests, setAdminVipRequests] = useState([]);
   const [adminVipLoading, setAdminVipLoading] = useState(false);
   const [adminVipActionLoading, setAdminVipActionLoading] = useState("");
@@ -555,6 +694,12 @@ function App() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState("");
   const [adminSuccess, setAdminSuccess] = useState("");
+  const [permissionEditUser, setPermissionEditUser] = useState(null);
+  const [permissionEditValue, setPermissionEditValue] = useState("user");
+  const [permissionUserQuery, setPermissionUserQuery] = useState("");
+  const [permissionAssignUserId, setPermissionAssignUserId] = useState("");
+  const [permissionAssignRole, setPermissionAssignRole] = useState("user");
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [newsForm, setNewsForm] = useState({ title: "", category: "", summary: "", content: "", author: "", image: "" });
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [allNewsList, setAllNewsList] = useState([]);
@@ -960,18 +1105,32 @@ function App() {
   );
   const adminTabMeta = {
     users: { label: "Quản lý người dùng", shortLabel: "Người dùng", icon: "👥" },
+    categories: { label: "Quản lý danh mục", shortLabel: "Danh mục", icon: "📂" },
     news: { label: "Quản lý tin tức", shortLabel: "Tin tức", icon: "📰" },
     "vip-requests": { label: "Duyệt VIP", shortLabel: "VIP", icon: "💎" },
     invoices: { label: "Quản lý hóa đơn", shortLabel: "Hóa đơn", icon: "🧾" },
-    comments: { label: "Quản lý bình luận", shortLabel: "Bình luận", icon: "💬" }
+    comments: { label: "Quản lý bình luận", shortLabel: "Bình luận", icon: "💬" },
+    permissions: { label: "Phân quyền", shortLabel: "Phân quyền", icon: "🔐" }
   };
   const adminTabBadges = {
     users: adminUsers.length,
+    categories: adminCategories.length,
     news: allNewsList.length,
     "vip-requests": adminVipRequests.length,
     invoices: adminInvoices.length,
-    comments: allComments.length
+    comments: allComments.length,
+    permissions: adminUsers.length
   };
+
+  const permissionRoleCounts = useMemo(() => {
+    const counts = { admin: 0, editor: 0, moderator: 0, user: 0 };
+    adminUsers.forEach((user) => {
+      const role = String(user.role || "user").toLowerCase();
+      counts[role] = (counts[role] || 0) + 1;
+    });
+    return counts;
+  }, [adminUsers]);
+
   const adminInvoiceSummary = useMemo(() => {
     const summary = {
       totalInvoices: adminInvoices.length,
@@ -1015,6 +1174,13 @@ function App() {
       note: `${adminUsers.filter((item) => item.role === "admin").length} admin`
     },
     {
+      id: "summary-categories",
+      icon: "📂",
+      label: "Danh mục tin tức",
+      value: adminCategories.length,
+      note: "Danh mục đang sử dụng"
+    },
+    {
       id: "summary-news",
       icon: "📰",
       label: "Bài viết đang quản lý",
@@ -1051,6 +1217,27 @@ function App() {
       note: `${allComments.filter((item) => new Date(item.createdAt).toDateString() === new Date().toDateString()).length} bình luận hôm nay`
     }
   ];
+
+  const articleCategoryOptions = Array.from(
+    new Set([
+      ...news.categories,
+      ...adminCategories.map((item) => item.name).filter(Boolean),
+      selectedCategory
+    ].filter(Boolean))
+  );
+
+  useEffect(() => {
+    if (adminCategories.length === 0) return;
+    setNews((prevNews) => ({
+      ...prevNews,
+      categories: Array.from(new Set([
+        ...prevNews.categories,
+        ...adminCategories.map((item) => item.name).filter(Boolean),
+        selectedCategory
+      ].filter(Boolean)))
+    }));
+  }, [adminCategories, selectedCategory]);
+
   const filteredAdminInvoices = useMemo(() => {
     const normalizedKeyword = normalizeSearchText(adminInvoiceKeyword);
 
@@ -1159,37 +1346,41 @@ function App() {
     window.history.replaceState({}, "", nextUrl);
   }, []);
 
-  useEffect(() => {
+  const refreshCurrentUser = useCallback(async () => {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-
-    async function fetchCurrentUser() {
-      try {
-        const response = await fetch("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-          localStorage.removeItem(TOKEN_KEY);
-          return;
-        }
-
-        let payload;
-        try {
-          payload = await response.json();
-        } catch {
-          localStorage.removeItem(TOKEN_KEY);
-          return;
-        }
-
-        setAuthUser(payload.user);
-      } catch {
-        localStorage.removeItem(TOKEN_KEY);
-      }
+    if (!token) {
+      setAuthUser(null);
+      return;
     }
 
-    fetchCurrentUser();
+    try {
+      const response = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        localStorage.removeItem(TOKEN_KEY);
+        setAuthUser(null);
+        return;
+      }
+
+      const payload = await response.json();
+      setAuthUser(payload.user);
+    } catch {
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthUser(null);
+    }
   }, []);
+
+  useEffect(() => {
+    refreshCurrentUser();
+  }, [refreshCurrentUser]);
+
+  useEffect(() => {
+    if (authUser?.role === "admin") {
+      fetchAdminCategories();
+    }
+  }, [authUser]);
 
   const fetchNews = useCallback(async () => {
     try {
@@ -1861,6 +2052,47 @@ function App() {
     }
   }
 
+  async function fetchAdminCategories() {
+    const token = localStorage.getItem(TOKEN_KEY);
+
+    try {
+      setAdminLoading(true);
+      const response = await fetch("/api/admin/categories", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể tải danh sách danh mục");
+      }
+
+      const data = await response.json();
+      setAdminCategories(data.categories);
+      setAdminError("");
+    } catch (err) {
+      setAdminError(err.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (adminCategoryMode === "update" && selectedCategoryId !== null) {
+      const category = adminCategories.find((item) => item.id === selectedCategoryId);
+      setEditedCategoryName(category?.name || "");
+    }
+  }, [adminCategoryMode, selectedCategoryId, adminCategories]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    adminCategories.forEach((category) => {
+      const key = String(category.name || "").trim().toLowerCase();
+      counts[key] = allNewsList.filter(
+        (item) => String(item.category || "").trim().toLowerCase() === key
+      ).length;
+    });
+    return counts;
+  }, [adminCategories, allNewsList]);
+
   async function fetchAdminNews() {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return;
@@ -1982,28 +2214,210 @@ function App() {
     setShowConfirmModal(true);
   }
 
-  async function handleUpdateRole(userId, newRole) {
+  function openPermissionModal(user) {
+    setPermissionEditUser(user);
+    setPermissionEditValue(user?.role || "user");
+    setShowPermissionModal(true);
+    setAdminError("");
+    setAdminSuccess("");
+  }
+
+  async function handleUpdatePermission() {
+    if (!permissionEditUser || !permissionEditValue) return;
+
     const token = localStorage.getItem(TOKEN_KEY);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
+      setAdminLoading(true);
+      const response = await fetch(`/api/admin/users/${permissionEditUser.id}/role`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ role: newRole })
+        body: JSON.stringify({ role: permissionEditValue })
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || "Cập nhật thất bại");
+        throw new Error(data.message || "Cập nhật quyền thất bại");
       }
 
-      setAdminSuccess("Cập nhật role thành công");
+      setAdminSuccess("Cập nhật quyền thành công");
+      setShowPermissionModal(false);
+      setPermissionEditUser(null);
+      setPermissionEditValue("user");
       fetchAdminUsers();
+
+      // If the current user's role was changed, refresh their auth state
+      if (permissionEditUser.id === authUser?.id) {
+        await refreshCurrentUser();
+      }
+    } catch (err) {
+      setAdminError(err.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  async function handleAssignPermission() {
+    if (!permissionAssignUserId || !permissionAssignRole) return;
+    const selectedUser = adminUsers.find((user) => String(user.id) === String(permissionAssignUserId));
+    if (!selectedUser) return;
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    try {
+      setAdminLoading(true);
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/role`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ role: permissionAssignRole })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Cập nhật quyền thất bại");
+      }
+
+      setAdminSuccess("Lưu phân quyền thành công");
+      fetchAdminUsers();
+
+      // If the current user's role was changed, refresh their auth state
+      if (selectedUser.id === authUser?.id) {
+        await refreshCurrentUser();
+      }
+    } catch (err) {
+      setAdminError(err.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  async function handleCreateCategory(name) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    try {
+      const response = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Tạo danh mục thất bại");
+      }
+
+      setAdminSuccess("Tạo danh mục thành công");
+      fetchAdminCategories();
     } catch (err) {
       setAdminError(err.message);
     }
+  }
+
+  async function handleUpdateCategory(categoryId, name) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    try {
+      const response = await fetch(`/api/admin/categories/${categoryId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Cập nhật danh mục thất bại");
+      }
+
+      setAdminSuccess("Cập nhật danh mục thành công");
+      fetchAdminCategories();
+    } catch (err) {
+      setAdminError(err.message);
+    }
+  }
+
+  async function handleCreateCategory() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    try {
+      const response = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newCategoryName.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Tạo danh mục thất bại");
+      }
+
+      setAdminSuccess("Tạo danh mục thành công");
+      setNewCategoryName("");
+      await Promise.all([fetchAdminCategories(), fetchNews()]);
+    } catch (err) {
+      setAdminError(err.message);
+    }
+  }
+
+  async function handleUpdateCategory(categoryId, name) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    try {
+      const response = await fetch(`/api/admin/categories/${categoryId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Cập nhật danh mục thất bại");
+      }
+
+      setAdminSuccess("Cập nhật danh mục thành công");
+      await Promise.all([fetchAdminCategories(), fetchNews()]);
+    } catch (err) {
+      setAdminError(err.message);
+    }
+  }
+
+  async function handleDeleteCategory(categoryId) {
+    setConfirmAction({
+      title: "Xóa danh mục",
+      message: "Bạn có chắc muốn xóa danh mục này? Các bài viết trong danh mục này có thể bị ảnh hưởng.",
+      onConfirm: async () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        try {
+          const response = await fetch(`/api/admin/categories/${categoryId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.message || "Xóa thất bại");
+          }
+
+          setAdminSuccess("Xóa danh mục thành công");
+          await Promise.all([fetchAdminCategories(), fetchNews()]);
+        } catch (err) {
+          setAdminError(err.message);
+        }
+        setShowConfirmModal(false);
+      }
+    });
+    setShowConfirmModal(true);
   }
 
   async function handleNewsSubmit(event) {
@@ -2141,6 +2555,7 @@ function App() {
   function openAdminPanel() {
     setShowAdminPanel(true);
     fetchAdminUsers();
+    fetchAdminCategories();
     fetchAdminNews();
     fetchAdminVipRequests();
     fetchAdminInvoices();
@@ -2151,7 +2566,7 @@ function App() {
     setAdminSuccess("");
 
     try {
-      await Promise.all([fetchAdminUsers(), fetchAdminNews(), fetchAdminVipRequests(), fetchAdminInvoices(), fetchNews()]);
+      await Promise.all([fetchAdminUsers(), fetchAdminCategories(), fetchAdminNews(), fetchAdminVipRequests(), fetchAdminInvoices(), fetchNews()]);
       setAdminSuccess("Đã làm mới dữ liệu quản trị.");
     } catch {
       setAdminError("Không thể làm mới toàn bộ dữ liệu quản trị.");
@@ -2249,11 +2664,17 @@ function App() {
     } finally {
       setUserNewsSubmitting(false);
     }
-  }
+  } 
 
   useEffect(() => {
     if (showAdminPanel && adminTab === "news") {
       fetchAdminNews();
+    }
+  }, [showAdminPanel, adminTab]);
+
+  useEffect(() => {
+    if (showAdminPanel && adminTab === "categories") {
+      fetchAdminCategories();
     }
   }, [showAdminPanel, adminTab]);
 
@@ -3802,7 +4223,7 @@ function App() {
               >
                 Tất cả
               </button>
-              {news.categories.map((item) => (
+              {articleCategoryOptions.map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -4823,6 +5244,19 @@ function App() {
                 </button>
                 <button
                   type="button"
+                  className={adminTab === "categories" ? "active" : ""}
+                  onClick={() => {
+                    setAdminTab("categories");
+                    setAdminCategoryMode("list");
+                    fetchAdminCategories();
+                  }}
+                >
+                  <span>{adminTabMeta.categories.icon}</span>
+                  <span>{adminTabMeta.categories.shortLabel}</span>
+                  <small>{adminTabBadges.categories}</small>
+                </button>
+                <button
+                  type="button"
                   className={adminTab === "news" ? "active" : ""}
                   onClick={() => setAdminTab("news")}
                 >
@@ -4863,17 +5297,21 @@ function App() {
                   <span>{adminTabMeta.comments.shortLabel}</span>
                   <small>{adminTabBadges.comments}</small>
                 </button>
+                <button
+                  type="button"
+                  className={adminTab === "permissions" ? "active" : ""}
+                  onClick={() => setAdminTab("permissions")}
+                >
+                  <span>{adminTabMeta.permissions.icon}</span>
+                  <span>{adminTabMeta.permissions.shortLabel}</span>
+                  <small>{adminTabBadges.permissions}</small>
+                </button>
               </div>
 
               <div className="admin-toolbar">
                 <p>
                   <strong>Module hiện tại:</strong> {adminTabMeta[adminTab]?.label || "Quản trị"}
                 </p>
-                <div className="admin-upcoming-modules">
-                  <span>Audit log</span>
-                  <span>Workflow kiểm duyệt</span>
-                  <span>Báo cáo KPI</span>
-                </div>
               </div>
 
               {adminError && <p className="auth-message error">{adminError}</p>}
@@ -4901,20 +5339,10 @@ function App() {
                             <td>{user.id}</td>
                             <td>{user.name}</td>
                             <td>{user.email}</td>
-                            <td>
-                              <select
-                                value={user.role}
-                                onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                                disabled={user.id === authUser.id}
-                              >
-                                <option value="user">User</option>
-                                <option value="editor">Editor</option>
-                                <option value="admin">Admin</option>
-                              </select>
-                            </td>
+                            <td>{user.role === "admin" ? "Admin" : user.role === "editor" ? "Editor" : "User"}</td>
                             <td>{new Date(user.createdAt).toLocaleDateString("vi-VN")}</td>
                             <td>
-                              {user.id !== authUser.id && (
+                              {user.id !== authUser.id ? (
                                 <button
                                   type="button"
                                   className="btn-delete"
@@ -4922,12 +5350,281 @@ function App() {
                                 >
                                   Xóa
                                 </button>
+                              ) : (
+                                <span className="text-muted">Không thể xóa</span>
                               )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  )}
+                </div>
+              )}
+
+              {adminTab === "categories" && (
+                <div className="admin-content">
+                  <div className="admin-category-actions">
+                    <button
+                      type="button"
+                      className={adminCategoryMode === "list" ? "active" : ""}
+                      onClick={() => setAdminCategoryMode("list")}
+                    >
+                      Danh sách danh mục
+                    </button>
+                    <button
+                      type="button"
+                      className={adminCategoryMode === "create" ? "active" : ""}
+                      onClick={() => setAdminCategoryMode("create")}
+                    >
+                      Thêm danh mục
+                    </button>
+                    <button
+                      type="button"
+                      className={adminCategoryMode === "update" ? "active" : ""}
+                      onClick={() => {
+                        setAdminCategoryMode("update");
+                        if (adminCategories.length > 0 && selectedCategoryId === null) {
+                          setSelectedCategoryId(adminCategories[0].id);
+                        }
+                      }}
+                    >
+                      Cập nhật danh mục
+                    </button>
+                  </div>
+
+                  {adminCategoryMode === "list" && (
+                    <>
+                      {adminLoading ? (
+                        <p>Đang tải...</p>
+                      ) : adminCategories.length === 0 ? (
+                        <p>Chưa có danh mục nào.</p>
+                      ) : (
+                        <div className="admin-category-list">
+                          {adminCategories.map((category) => {
+                            const count = categoryCounts[String(category.name || "").trim().toLowerCase()] || 0;
+                            return (
+                              <div key={category.id} className="category-card">
+                                <div>
+                                  <h4>{category.name}</h4>
+                                  <small>{count} bài viết</small>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn-delete"
+                                  onClick={() => handleDeleteCategory(category.id)}
+                                >
+                                  Xóa
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {adminCategoryMode === "create" && (
+                    <div className="admin-form admin-category-form">
+                      <h3>Thêm danh mục</h3>
+                      <input
+                        placeholder="Ví dụ: Khoa học dữ liệu"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                      />
+                      <button type="button" className="btn-edit" onClick={handleCreateCategory}>
+                        Thêm danh mục
+                      </button>
+                    </div>
+                  )}
+
+                  {adminCategoryMode === "update" && (
+                    <div className="admin-form admin-category-form">
+                      <h3>Cập nhật danh mục</h3>
+                      <select
+                        value={selectedCategoryId ?? ""}
+                        onChange={(e) => {
+                          setSelectedCategoryId(Number(e.target.value));
+                        }}
+                      >
+                        <option value="">-- Chọn danh mục hiện tại --</option>
+                        {adminCategories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        placeholder="Tên danh mục mới"
+                        value={editedCategoryName}
+                        onChange={(e) => setEditedCategoryName(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-edit"
+                        disabled={!selectedCategoryId || !editedCategoryName.trim()}
+                        onClick={() => {
+                          if (selectedCategoryId && editedCategoryName.trim()) {
+                            handleUpdateCategory(selectedCategoryId, editedCategoryName.trim());
+                          }
+                        }}
+                      >
+                        Đổi tên danh mục
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {adminTab === "permissions" && (
+                <div className="admin-content">
+                  {adminLoading ? (
+                    <p>Đang tải...</p>
+                  ) : (
+                    <>
+                      <div className="admin-section-header">
+                        <div>
+                          <h3>Quản lý phân quyền người dùng</h3>
+                          <p className="section-desc">Cấp quyền và phân công role cho người dùng trong hệ thống</p>
+                        </div>
+                      </div>
+
+                      <div className="permission-admin-panel">
+                        <div className="permission-assign-card">
+                          <h4>Gán quyền nhanh</h4>
+                          <div className="admin-form permission-assign-form">
+                            <label>
+                              Chọn người dùng
+                              <select
+                                value={permissionAssignUserId}
+                                onChange={(e) => {
+                                  const selectedId = e.target.value;
+                                  setPermissionAssignUserId(selectedId);
+                                  const selectedUser = adminUsers.find((item) => String(item.id) === String(selectedId));
+                                  setPermissionAssignRole(selectedUser?.role || "user");
+                                }}
+                              >
+                                <option value="">-- Chọn người dùng --</option>
+                                {adminUsers.map((user) => (
+                                  <option key={user.id} value={user.id}>
+                                    {user.name} ({user.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              Chọn quyền
+                              <select value={permissionAssignRole} onChange={(e) => setPermissionAssignRole(e.target.value)}>
+                                {PERMISSION_ROLE_OPTIONS.map((role) => (
+                                  <option key={role.value} value={role.value}>
+                                    {role.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              type="button"
+                              className="btn-save"
+                              onClick={handleAssignPermission}
+                              disabled={adminLoading || !permissionAssignUserId || !permissionAssignRole}
+                            >
+                              {adminLoading ? "Đang lưu..." : "Lưu phân quyền"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="permission-role-stats">
+                          {Object.entries(permissionRoleCounts).map(([role, count]) => (
+                            <div key={role} className={`role-stat-card role-stat-${role}`}>
+                              <div className="role-stat-name">{PERMISSION_ROLE_LABELS[role] || role}</div>
+                              <div className="role-stat-value">{count}</div>
+                              <div className="role-stat-note">{count} người dùng đang giữ quyền</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Tên</th>
+                            <th>Email</th>
+                            <th>Quyền hiện tại</th>
+                            <th>Ngày tạo</th>
+                            <th>Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminUsers.map((user) => (
+                            <tr key={user.id}>
+                              <td>{user.id}</td>
+                              <td>{user.name}</td>
+                              <td>{user.email}</td>
+                              <td>
+                                {user.role === "admin"
+                                  ? "Admin"
+                                  : user.role === "editor"
+                                  ? "Editor"
+                                  : user.role === "moderator"
+                                  ? "Moderator"
+                                  : "User"}
+                              </td>
+                              <td>{new Date(user.createdAt).toLocaleDateString("vi-VN")}</td>
+                              <td>
+                                {user.id === authUser.id ? (
+                                  <span className="text-muted">Không thể sửa</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn-edit"
+                                    onClick={() => openPermissionModal(user)}
+                                  >
+                                    Cấp Quyền
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {showPermissionModal && permissionEditUser && (
+                        <div className="modal-backdrop" onClick={() => setShowPermissionModal(false)}>
+                          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                              <h3>Phân quyền cho {permissionEditUser.name}</h3>
+                              <small>{permissionEditUser.email}</small>
+                            </div>
+                            <div className="modal-body">
+                              <label>Chọn quyền</label>
+                              <div className="role-options">
+                                {PERMISSION_ROLE_OPTIONS.map((role) => (
+                                  <label key={role.value} className={`role-option ${permissionEditValue === role.value ? "selected" : ""}`}>
+                                    <input
+                                      type="radio"
+                                      name="permission"
+                                      value={role.value}
+                                      checked={permissionEditValue === role.value}
+                                      onChange={(e) => setPermissionEditValue(e.target.value)}
+                                    />
+                                    <strong>{role.label}</strong>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="modal-footer">
+                              <button type="button" className="btn-cancel" onClick={() => setShowPermissionModal(false)}>
+                                Hủy
+                              </button>
+                              <button type="button" className="btn-save" onClick={handleUpdatePermission} disabled={adminLoading}>
+                                {adminLoading ? "Đang cập nhật..." : "Cập nhật quyền"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -5024,7 +5721,7 @@ function App() {
                       required
                     >
                       <option value="">-- Chọn danh mục --</option>
-                      {news.categories.map((cat) => (
+                      {articleCategoryOptions.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
@@ -5296,6 +5993,7 @@ function App() {
                   )}
                 </div>
               )}
+
             </section>
           </div>
         )}
@@ -6123,7 +6821,7 @@ function App() {
                               required
                             >
                               <option value="">-- Chọn danh mục --</option>
-                              {news.categories.map((cat) => (
+                              {articleCategoryOptions.map((cat) => (
                                 <option key={cat} value={cat}>{cat}</option>
                               ))}
                             </select>

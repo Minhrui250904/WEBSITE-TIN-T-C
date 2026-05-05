@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "name": "Công nghệ",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 2,
+    "name": "Kinh doanh",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 3,
+    "name": "Thể thao",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 4,
+    "name": "Giải trí",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 5,
+    "name": "Giáo dục",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 6,
+    "name": "Sức khỏe",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 7,
+    "name": "Môi trường",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 8,
+    "name": "Du lịch",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  },
+  {
+    "id": 9,
+    "name": "Quốc tế",
+    "createdAt": "2026-05-04T15:39:50.724Z"
+  }
+]

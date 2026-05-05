@@ -1,0 +1,25 @@
+[
+  {
+    "id": 1,
+    "code": "vip_discount_50",
+    "label": "Giảm giá nửa giá VIP cho tất cả các gói",
+    "discountPercent": 50
+  },
+  {
+    "id": 2,
+    "code": "free_vip_silver",
+    "label": "Free VIP Bạc",
+    "vipStatus": "silver"
+  },
+  {
+    "id": 3,
+    "code": "lucky_next_time",
+    "label": "Chúc bạn may mắn lần sau"
+  },
+  {
+    "id": 4,
+    "code": "vip_discount_5",
+    "label": "Giảm giá 5%",
+    "discountPercent": 5
+  }
+]

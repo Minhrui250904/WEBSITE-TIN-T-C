@@ -30,6 +30,28 @@ import {
   acceptFriendRequest
 } from "./usersStore.js";
 import { appendConversationMessage, getConversationMessages } from "./messagesStore.js";
+import { 
+  getPrizes, 
+  createPrize, 
+  updatePrize, 
+  deletePrize, 
+  getPrizeById,
+  getPrizeByCode
+} from "./prizeStore.js";
+import {
+  getSpinHistory,
+  getSpinHistoryPaginated,
+  calculateSpinStats,
+  addSpinRecord,
+  resetUserSpin
+} from "./spinWheelStore.js";
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getAllCategories
+} from "./categoriesStore.js";
 
 dotenv.config();
 
@@ -68,8 +90,98 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,64}$/;
 const AVATAR_DATA_URL_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,[a-zA-Z0-9+/=]+$/;
 const MAX_AVATAR_LENGTH = 3 * 1024 * 1024;
-const ALLOWED_ROLES = new Set(["user", "editor", "admin"]);
+const ALLOWED_ROLES = new Set(["user", "editor", "moderator", "admin"]);
 const PUBLIC_ROLES = new Set(["user", "editor"]);
+
+// Permission definitions for different roles
+const PERMISSIONS = {
+  user: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history"
+  ],
+  editor: [
+    "read:articles",
+    "read:comments", 
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",      // Can create articles
+    "update:own-articles",  // Can update own articles
+    "delete:own-articles"   // Can delete own articles
+  ],
+  moderator: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",
+    "update:own-articles",
+    "delete:own-articles",
+    "read:all-articles",    // Can view all articles including unpublished
+    "moderate:articles",    // Can approve/reject articles
+    "read:users",           // Can view user list
+    "read:vip-requests"     // Can view VIP requests
+  ],
+  admin: [
+    "read:articles",
+    "read:comments",
+    "create:comments",
+    "read:profile",
+    "update:profile",
+    "read:friends",
+    "manage:friends",
+    "read:chat",
+    "create:chat",
+    "spin:spinwheel",
+    "read:prizes",
+    "create:vip-request",
+    "read:payment-history",
+    "create:articles",
+    "update:own-articles",
+    "delete:own-articles",
+    "read:all-articles",
+    "moderate:articles",
+    "read:users",
+    "read:vip-requests",
+    "manage:users",         // Can CRUD users
+    "manage:roles",         // Can change user roles
+    "manage:prizes",        // Can CRUD prizes
+    "manage:spinwheel",     // Can manage spin wheel settings
+    "manage:categories",    // Can CRUD categories
+    "approve:vip-requests", // Can approve VIP requests
+    "read:invoices",        // Can view all invoices
+    "read:spin-history",    // Can view all spin history
+    "reset:spins"           // Can reset user spins
+  ]
+};
 const DEFAULT_ARTICLE_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80";
 const NON_VIP_ARTICLE_VIEW_LIMIT = Number.parseInt(process.env.NON_VIP_ARTICLE_VIEW_LIMIT || "5", 10);
 const TEXT_REPLACEMENTS = [
@@ -713,7 +825,7 @@ function validateRegisterBody({ name, email, password, role }) {
   return "";
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || "";
   const [scheme, token] = authHeader.split(" ");
 
@@ -722,7 +834,14 @@ function authMiddleware(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await findUserById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: "Tài khoản không tồn tại" });
+    }
+
+    const { passwordHash, ...safeUser } = user;
+    req.user = safeUser;
     return next();
   } catch {
     return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
@@ -734,6 +853,38 @@ function adminOnlyMiddleware(req, res, next) {
     return res.status(403).json({ message: "Chỉ admin mới có quyền truy cập" });
   }
   return next();
+}
+
+// Permission checking functions
+function hasPermission(user, permission) {
+  if (!user || !user.role) return false;
+  const userPermissions = PERMISSIONS[user.role] || [];
+  return userPermissions.includes(permission);
+}
+
+function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!hasPermission(req.user, permission)) {
+      return res.status(403).json({ 
+        message: `Bạn không có quyền: ${permission}` 
+      });
+    }
+    return next();
+  };
+}
+
+function requireAnyPermission(...permissions) {
+  return (req, res, next) => {
+    const userPermissions = PERMISSIONS[req.user.role] || [];
+    const hasAnyPermission = permissions.some(perm => userPermissions.includes(perm));
+    
+    if (!hasAnyPermission) {
+      return res.status(403).json({ 
+        message: `Bạn cần một trong các quyền: ${permissions.join(', ')}` 
+      });
+    }
+    return next();
+  };
 }
 
 function vipOnlyMiddleware(req, res, next) {
@@ -1234,9 +1385,29 @@ const SPIN_WHEEL_PRIZE_POOL = [
   }
 ];
 
+// Global cache for spin wheel prizes
+let SPIN_WHEEL_PRIZES_CACHE = [...SPIN_WHEEL_PRIZE_POOL];
+
+async function loadSpinWheelPrizes() {
+  try {
+    const prizes = await getPrizes();
+    if (prizes.length > 0) {
+      SPIN_WHEEL_PRIZES_CACHE = prizes.map(p => ({
+        code: p.code,
+        label: p.label,
+        ...(p.discountPercent && { discountPercent: p.discountPercent }),
+        ...(p.vipStatus && { vipStatus: p.vipStatus })
+      }));
+    }
+  } catch (error) {
+    console.error("Failed to load spin wheel prizes:", error.message);
+    SPIN_WHEEL_PRIZES_CACHE = SPIN_WHEEL_PRIZE_POOL;
+  }
+}
+
 function pickSpinWheelPrize() {
-  const index = Math.floor(Math.random() * SPIN_WHEEL_PRIZE_POOL.length);
-  return SPIN_WHEEL_PRIZE_POOL[index];
+  const index = Math.floor(Math.random() * SPIN_WHEEL_PRIZES_CACHE.length);
+  return SPIN_WHEEL_PRIZES_CACHE[index];
 }
 
 function resolveSpinReward(user, prize) {
@@ -2335,6 +2506,22 @@ app.post("/api/auth/spin-wheel/spin", authMiddleware, async (req, res) => {
   const latestUser = (await findUserById(user.id)) || updatedUser;
   const token = signToken(latestUser);
 
+  // Record spin in history
+  try {
+    await addSpinRecord({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      prizeCode: prize.code,
+      prizeLabel: prize.label,
+      hasDiscount: reward.discountPercent > 0,
+      discountPercent: reward.discountPercent || 0,
+      spunAt
+    });
+  } catch (error) {
+    console.error("Failed to record spin:", error.message);
+  }
+
   return res.status(200).json({
     message: reward.rewardMessage,
     prize: {
@@ -2644,7 +2831,7 @@ app.get("/api/auth/payment-history", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/api/news", (req, res) => {
+app.get("/api/news", async (req, res) => {
   const requestedPage = Number.parseInt(req.query.page, 10);
   const requestedLimit = Number.parseInt(req.query.limit, 10);
   const page = Number.isNaN(requestedPage) ? 1 : Math.max(requestedPage, 1);
@@ -2661,11 +2848,13 @@ app.get("/api/news", (req, res) => {
   const start = (safePage - 1) * limit;
   const latest = sourceItems.slice(start, start + limit);
 
+  const categoryList = await getAllCategories();
+
   res.json({
     hero: normalizeArticleDisplay(sourceItems[0] ?? null),
     trending: sourceItems.slice(1, 6).map(normalizeArticleDisplay),
     latest: latest.map(normalizeArticleDisplay),
-    categories: categories.map(restoreVietnameseText),
+    categories: categoryList.map((category) => restoreVietnameseText(category.name || "")),
     pagination: {
       page: safePage,
       limit,
@@ -2738,7 +2927,7 @@ app.get("/api/news/:id", async (req, res) => {
 });
 
 // Admin endpoints
-app.get("/api/admin/invoices", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.get("/api/admin/invoices", authMiddleware, requirePermission("read:invoices"), async (req, res) => {
   try {
     const users = await getAllUsers();
     const invoices = buildAdminInvoices(users);
@@ -2769,7 +2958,7 @@ app.get("/api/admin/invoices", authMiddleware, adminOnlyMiddleware, async (req, 
   }
 });
 
-app.get("/api/admin/users", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.get("/api/admin/users", authMiddleware, requirePermission("manage:users"), async (req, res) => {
   try {
     const users = await getAllUsers();
     const publicUsers = users.map((u) => ({
@@ -2783,7 +2972,7 @@ app.get("/api/admin/users", authMiddleware, adminOnlyMiddleware, async (req, res
   }
 });
 
-app.delete("/api/admin/users/:id", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.delete("/api/admin/users/:id", authMiddleware, requirePermission("manage:users"), async (req, res) => {
   try {
     const userId = Number.parseInt(req.params.id, 10);
     if (userId === req.user.id) {
@@ -2801,7 +2990,7 @@ app.delete("/api/admin/users/:id", authMiddleware, adminOnlyMiddleware, async (r
   }
 });
 
-app.put("/api/admin/users/:id/role", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.put("/api/admin/users/:id/role", authMiddleware, requirePermission("manage:roles"), async (req, res) => {
   try {
     const userId = Number.parseInt(req.params.id, 10);
     const newRole = normalizeRole(req.body.role);
@@ -2825,7 +3014,7 @@ app.put("/api/admin/users/:id/role", authMiddleware, adminOnlyMiddleware, async 
   }
 });
 
-app.post("/api/admin/news", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.post("/api/admin/news", authMiddleware, requirePermission("create:articles"), async (req, res) => {
   try {
     const { title, category, summary, author, image, content } = req.body;
     
@@ -2862,7 +3051,7 @@ app.post("/api/admin/news", authMiddleware, adminOnlyMiddleware, async (req, res
   }
 });
 
-app.get("/api/admin/news", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.get("/api/admin/news", authMiddleware, requirePermission("read:all-articles"), async (req, res) => {
   try {
     const articles = [...headlines]
       .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
@@ -2874,7 +3063,7 @@ app.get("/api/admin/news", authMiddleware, adminOnlyMiddleware, async (req, res)
   }
 });
 
-app.put("/api/admin/news/:id", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.put("/api/admin/news/:id", authMiddleware, requireAnyPermission("manage:articles", "update:own-articles"), async (req, res) => {
   try {
     const articleId = Number.parseInt(req.params.id, 10);
     const { title, category, summary, author, image, content } = req.body;
@@ -2882,6 +3071,11 @@ app.put("/api/admin/news/:id", authMiddleware, adminOnlyMiddleware, async (req, 
     const index = headlines.findIndex(h => h.id === articleId);
     if (index === -1) {
       return res.status(404).json({ message: "Không tìm thấy tin tức" });
+    }
+    
+    // Check ownership for non-admin users
+    if (!hasPermission(req.user, "manage:articles") && !canManageArticle(headlines[index], req.user)) {
+      return res.status(403).json({ message: "Bạn chỉ có thể chỉnh sửa bài viết của mình" });
     }
     
     if (title) headlines[index].title = restoreVietnameseText(title.trim());
@@ -2910,13 +3104,18 @@ app.put("/api/admin/news/:id", authMiddleware, adminOnlyMiddleware, async (req, 
   }
 });
 
-app.delete("/api/admin/news/:id", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.delete("/api/admin/news/:id", authMiddleware, requireAnyPermission("manage:articles", "delete:own-articles"), async (req, res) => {
   try {
     const articleId = Number.parseInt(req.params.id, 10);
     const index = headlines.findIndex(h => h.id === articleId);
     
     if (index === -1) {
       return res.status(404).json({ message: "Không tìm thấy tin tức" });
+    }
+    
+    // Check ownership for non-admin users
+    if (!hasPermission(req.user, "manage:articles") && !canManageArticle(headlines[index], req.user)) {
+      return res.status(403).json({ message: "Bạn chỉ có thể xóa bài viết của mình" });
     }
     
     headlines.splice(index, 1);
@@ -2926,7 +3125,7 @@ app.delete("/api/admin/news/:id", authMiddleware, adminOnlyMiddleware, async (re
   }
 });
 
-app.get("/api/admin/vip-requests", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.get("/api/admin/vip-requests", authMiddleware, requirePermission("read:vip-requests"), async (req, res) => {
   try {
     const users = await getAllUsers();
     const requests = users
@@ -2964,7 +3163,7 @@ app.get("/api/admin/vip-requests", authMiddleware, adminOnlyMiddleware, async (r
   }
 });
 
-app.put("/api/admin/vip-requests/:requestId/decision", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.put("/api/admin/vip-requests/:requestId/decision", authMiddleware, requirePermission("approve:vip-requests"), async (req, res) => {
   const requestId = typeof req.params.requestId === "string" ? req.params.requestId.trim() : "";
   const decision = typeof req.body.decision === "string" ? req.body.decision.trim() : "";
 
@@ -2985,7 +3184,7 @@ app.put("/api/admin/vip-requests/:requestId/decision", authMiddleware, adminOnly
   return res.json({ message: result.message, user: toPublicUser(result.user) });
 });
 
-app.post("/api/admin/vip-requests/:requestId/resend", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+app.post("/api/admin/vip-requests/:requestId/resend", authMiddleware, requirePermission("approve:vip-requests"), async (req, res) => {
   const requestId = typeof req.params.requestId === "string" ? req.params.requestId.trim() : "";
   if (!requestId) {
     return res.status(400).json({ message: "Thiếu mã yêu cầu VIP." });
@@ -3017,6 +3216,219 @@ app.post("/api/admin/vip-requests/:requestId/resend", authMiddleware, adminOnlyM
   } catch (error) {
     console.error("Failed to resend VIP approval email by admin:", error.message);
     return res.status(500).json({ message: "Không thể gửi lại email duyệt." });
+  }
+});
+
+// Prize Management Endpoints
+app.get("/api/admin/spin-wheel/prizes", authMiddleware, requirePermission("manage:prizes"), async (req, res) => {
+  try {
+    const prizes = await getPrizes();
+    return res.json({ prizes });
+  } catch (error) {
+    console.error("Failed to fetch prizes:", error.message);
+    return res.status(500).json({ message: "Không thể tải danh sách giải thưởng" });
+  }
+});
+
+app.post("/api/admin/spin-wheel/prizes", authMiddleware, requirePermission("manage:prizes"), async (req, res) => {
+  const code = typeof req.body.code === "string" ? req.body.code.trim() : "";
+  const label = typeof req.body.label === "string" ? req.body.label.trim() : "";
+  const discountPercent = req.body.discountPercent ? Number.parseInt(req.body.discountPercent, 10) : null;
+  const vipStatus = req.body.vipStatus ? String(req.body.vipStatus).trim() : null;
+
+  if (!code || !label) {
+    return res.status(400).json({ message: "Mã giải thưởng và tên giải thưởng là bắt buộc" });
+  }
+
+  if (code.length > 50) {
+    return res.status(400).json({ message: "Mã giải thưởng quá dài (tối đa 50 ký tự)" });
+  }
+
+  if (label.length > 500) {
+    return res.status(400).json({ message: "Tên giải thưởng quá dài (tối đa 500 ký tự)" });
+  }
+
+  if (discountPercent !== null && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+    return res.status(400).json({ message: "Phần trăm giảm giá phải từ 0 đến 100" });
+  }
+
+  if (vipStatus && !["silver", "gold", "platinum"].includes(vipStatus)) {
+    return res.status(400).json({ message: "VIP Status không hợp lệ" });
+  }
+
+  try {
+    const prize = await createPrize({
+      code,
+      label,
+      discountPercent,
+      vipStatus
+    });
+
+    // Reload cache
+    await loadSpinWheelPrizes();
+
+    return res.status(201).json({ 
+      message: "Thêm giải thưởng thành công",
+      prize 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+app.put("/api/admin/spin-wheel/prizes/:prizeId", authMiddleware, requirePermission("manage:prizes"), async (req, res) => {
+  const prizeId = Number.parseInt(req.params.prizeId, 10);
+  const label = typeof req.body.label === "string" ? req.body.label.trim() : "";
+  const discountPercent = req.body.discountPercent !== undefined ? (req.body.discountPercent ? Number.parseInt(req.body.discountPercent, 10) : null) : undefined;
+  const vipStatus = req.body.vipStatus !== undefined ? (req.body.vipStatus ? String(req.body.vipStatus).trim() : null) : undefined;
+
+  if (!Number.isFinite(prizeId) || prizeId <= 0) {
+    return res.status(400).json({ message: "ID giải thưởng không hợp lệ" });
+  }
+
+  if (!label) {
+    return res.status(400).json({ message: "Tên giải thưởng là bắt buộc" });
+  }
+
+  if (label.length > 500) {
+    return res.status(400).json({ message: "Tên giải thưởng quá dài (tối đa 500 ký tự)" });
+  }
+
+  if (discountPercent !== undefined && discountPercent !== null && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+    return res.status(400).json({ message: "Phần trăm giảm giá phải từ 0 đến 100" });
+  }
+
+  if (vipStatus !== undefined && vipStatus !== null && !["silver", "gold", "platinum"].includes(vipStatus)) {
+    return res.status(400).json({ message: "VIP Status không hợp lệ" });
+  }
+
+  try {
+    const prize = await updatePrize(prizeId, {
+      label,
+      discountPercent,
+      vipStatus
+    });
+
+    // Reload cache
+    await loadSpinWheelPrizes();
+
+    return res.json({ 
+      message: "Cập nhật giải thưởng thành công",
+      prize 
+    });
+  } catch (error) {
+    if (error.message.includes("Không tìm thấy")) {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+app.delete("/api/admin/spin-wheel/prizes/:prizeId", authMiddleware, requirePermission("manage:prizes"), async (req, res) => {
+  const prizeId = Number.parseInt(req.params.prizeId, 10);
+
+  if (!Number.isFinite(prizeId) || prizeId <= 0) {
+    return res.status(400).json({ message: "ID giải thưởng không hợp lệ" });
+  }
+
+  try {
+    await deletePrize(prizeId);
+
+    // Reload cache
+    await loadSpinWheelPrizes();
+
+    return res.json({ message: "Xóa giải thưởng thành công" });
+  } catch (error) {
+    if (error.message.includes("Không tìm thấy")) {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+// Spin Wheel Admin Endpoints
+app.get("/api/admin/spin-wheel/stats", authMiddleware, requirePermission("read:spin-history"), async (req, res) => {
+  try {
+    const stats = await calculateSpinStats();
+    return res.json({ stats });
+  } catch (error) {
+    console.error("Failed to calculate spin wheel stats:", error.message);
+    return res.status(500).json({ message: "Không thể tính toán thống kê" });
+  }
+});
+
+app.get("/api/admin/spin-wheel/history", authMiddleware, requirePermission("read:spin-history"), async (req, res) => {
+  const page = Math.max(1, Number.parseInt(req.query.page || "1", 10));
+  const limit = Math.max(1, Math.min(100, Number.parseInt(req.query.limit || "20", 10)));
+
+  try {
+    const result = await getSpinHistoryPaginated(page, limit);
+    return res.json({
+      history: result.history,
+      pagination: result.pagination
+    });
+  } catch (error) {
+    console.error("Failed to fetch spin wheel history:", error.message);
+    return res.status(500).json({ message: "Không thể tải lịch sử chơi" });
+  }
+});
+
+app.get("/api/admin/spin-wheel/config", authMiddleware, requirePermission("manage:spinwheel"), async (req, res) => {
+  try {
+    const prizes = await getPrizes();
+    
+    const config = {
+      enabled: true,
+      maxSpinsPerUser: 1,
+      prizes: prizes.map(p => ({
+        code: p.code,
+        label: p.label,
+        discountPercent: p.discountPercent || null,
+        vipStatus: p.vipStatus || null
+      }))
+    };
+    
+    return res.json({ config });
+  } catch (error) {
+    console.error("Failed to fetch spin wheel config:", error.message);
+    return res.status(500).json({ message: "Không thể tải cấu hình" });
+  }
+});
+
+app.put("/api/admin/spin-wheel/reset/:userId", authMiddleware, requirePermission("reset:spins"), async (req, res) => {
+  const userId = Number.parseInt(req.params.userId, 10);
+
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+  }
+
+  try {
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    // Reset user's spin
+    const updated = await updateUserSpinWheelReward(userId, {
+      spinWheel: {
+        used: false,
+        prizeCode: null,
+        prizeLabel: null,
+        spunAt: null
+      }
+    });
+
+    if (!updated) {
+      return res.status(500).json({ message: "Không thể reset lượt chơi" });
+    }
+
+    return res.json({
+      message: "Đã reset lượt chơi thành công",
+      user: toPublicUser(updated)
+    });
+  } catch (error) {
+    console.error("Failed to reset user spin:", error.message);
+    return res.status(500).json({ message: "Lỗi khi reset lượt chơi" });
   }
 });
 
@@ -3083,8 +3495,67 @@ app.delete("/api/news/:id", authMiddleware, async (req, res) => {
   }
 });
 
+app.get("/api/admin/categories", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+  try {
+    const categories = await getAllCategories();
+    res.json({ categories });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi tải danh sách danh mục" });
+  }
+});
+
+app.post("/api/admin/categories", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Tên danh mục không được để trống" });
+    }
+
+    const newCategory = await createCategory(name.trim());
+    res.status(201).json({ message: "Tạo danh mục thành công", category: newCategory });
+  } catch (err) {
+    if (err.message === "Danh mục đã tồn tại") {
+      return res.status(400).json({ message: err.message });
+    }
+    res.status(500).json({ message: "Lỗi tạo danh mục" });
+  }
+});
+
+app.put("/api/admin/categories/:id", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+  try {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Tên danh mục không được để trống" });
+    }
+
+    const updatedCategory = await updateCategory(categoryId, name.trim());
+    res.json({ message: "Cập nhật danh mục thành công", category: updatedCategory });
+  } catch (err) {
+    if (err.message.includes("không tồn tại") || err.message.includes("đã tồn tại")) {
+      return res.status(400).json({ message: err.message });
+    }
+    res.status(500).json({ message: "Lỗi cập nhật danh mục" });
+  }
+});
+
+app.delete("/api/admin/categories/:id", authMiddleware, adminOnlyMiddleware, async (req, res) => {
+  try {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    await deleteCategory(categoryId);
+    res.json({ message: "Xóa danh mục thành công" });
+  } catch (err) {
+    if (err.message === "Danh mục không tồn tại") {
+      return res.status(404).json({ message: err.message });
+    }
+    res.status(500).json({ message: "Lỗi xóa danh mục" });
+  }
+});
+
 async function startServer() {
   await initializeAdminAccount();
+  await loadSpinWheelPrizes();
   app.listen(PORT, () => {
     console.log(`News API is running on http://localhost:${PORT}`);
   });

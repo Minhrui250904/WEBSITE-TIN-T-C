@@ -34,10 +34,10 @@ const SpinWheel = ({ authUser, onSpinRequest }) => {
   // Không cần state cho thời gian chờ nữa
 
   const prizes = [
-    { label: 'Giảm giá 50%', icon: '💰', color: '#ff6b6b' },
+    { label: 'Giảm giá 15%', icon: '💰', color: '#ff6b6b' },
     { label: 'Tiền thưởng', icon: '💵', color: '#4ecdc4' },
     { label: 'Quay lại sau', icon: '🍀', color: '#ffd93d' },
-    { label: 'Giảm giá 10%', icon: '🎁', color: '#a8e6cf' }
+    { label: 'Giảm giá 5%', icon: '🎁', color: '#a8e6cf' }
   ];
 
   const prizeCodeToIndex = {
